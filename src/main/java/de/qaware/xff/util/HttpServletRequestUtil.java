@@ -15,10 +15,13 @@
  */
 package de.qaware.xff.util;
 
+import de.qaware.xff.filter.ForwardedHeaderInitialHeaders;
+
 import javax.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Enumeration;
+import java.util.Map;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
@@ -66,11 +69,29 @@ public final class HttpServletRequestUtil {
 	 * @return {@see HttpHeaders} extracted from {@see HttpServletRequest}
 	 */
 	public static HttpHeaders getHeaders(HttpServletRequest servletRequest) {
+		return getHeaders(servletRequest, null);
+	}
+
+	/**
+	 * Extract headers from the given request
+	 *
+	 * @param servletRequest {@see HttpServletRequest}
+	 * @return {@see HttpHeaders} extracted from {@see HttpServletRequest}
+	 */
+	public static HttpHeaders getHeaders(HttpServletRequest servletRequest, ForwardedHeaderInitialHeaders initialOptions) {
 		HttpHeaders headers = new HttpHeaders();
 		setHeaderNames(headers, servletRequest);
 		setContentLength(headers, servletRequest);
+		if (initialOptions != null) {
+			for (Map.Entry<String,String> entry : initialOptions.getDefaultHeaders().entrySet()) {
+				if (!headers.containsKey(entry.getKey())){
+					headers.add(entry.getKey(), entry.getValue());
+				}
+			}
+		}
 		return headers;
 	}
+
 
 	private static void setHeaderNames(HttpHeaders headers, HttpServletRequest servletRequest) {
 		for (Enumeration<?> headerNames = servletRequest.getHeaderNames(); headerNames.hasMoreElements(); ) {

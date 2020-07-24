@@ -51,29 +51,36 @@ class ForwardedHeaderExtractingRequest extends HttpServletRequestWrapper {
     private final String requestUrl;
 
     @SuppressWarnings("squid:S3358")//nested ternary op is more readable in this case
-    public ForwardedHeaderExtractingRequest(HttpServletRequest request, XForwardedPrefixStrategy prefixStrategy) {
+    public ForwardedHeaderExtractingRequest(HttpServletRequest request, ForwardedHeaderInitialHeaders initialOptions, XForwardedPrefixStrategy prefixStrategy) {
         super(request);
 
         UrlPathHelper pathHelper = new UrlPathHelper();
         pathHelper.setUrlDecode(false);
         pathHelper.setRemoveSemicolonContent(false);
 
-        UriComponents uriComponents = UriComponentsBuilder.fromHttpRequest(request).build();
+        UriComponents uriComponents = UriComponentsBuilder.fromHttpRequest(request, initialOptions).build();
         int portFromUri = uriComponents.getPort();
-
+        uriComponents.getPath();
         this.scheme = uriComponents.getScheme();
         this.secure = "https".equals(scheme);
         this.host = uriComponents.getHost();
         this.port = (portFromUri == -1 ? (this.secure ? HTTPS_PORT : HTTP_PORT) : portFromUri);
 
-        this.contextPath = adaptFromXForwardedPrefix(request, prefixStrategy);
+        String defaultPrefix = null;
+        if (initialOptions.hasDefaults()){
+            defaultPrefix = initialOptions.getDefaultHeaders().get(X_FORWARDED_PREFIX.headerName());
+        }
+        this.contextPath = adaptFromXForwardedPrefix(request, defaultPrefix, prefixStrategy);
 
         this.requestUri = this.contextPath + pathHelper.getPathWithinApplication(request);
         this.requestUrl = this.scheme + "://" + this.host + (portFromUri == -1 ? "" : (":" + portFromUri)) + this.requestUri;
     }
 
-    private static String adaptFromXForwardedPrefix(HttpServletRequest request, XForwardedPrefixStrategy prefixStrategy) {
+    private static String adaptFromXForwardedPrefix(HttpServletRequest request, String defaultPrefix, XForwardedPrefixStrategy prefixStrategy) {
         String prefix = getForwardedPrefix(request);
+        if (prefix == null) {
+            prefix = defaultPrefix;
+        }
         if (prefix == null) {
             return request.getContextPath();
         }

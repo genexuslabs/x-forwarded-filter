@@ -15,6 +15,7 @@
  */
 package de.qaware.xff.util.uri;
 
+import de.qaware.xff.filter.ForwardedHeaderInitialHeaders;
 import de.qaware.xff.util.HttpHeaders;
 import de.qaware.xff.util.HttpServletRequestUtil;
 import org.apache.commons.collections4.MultiValuedMap;
@@ -323,10 +324,25 @@ public class UriComponentsBuilder {
      * @return the URI components of the URI
      * @since 4.1.5
      */
-    public static UriComponentsBuilder fromHttpRequest(HttpServletRequest request) {
+    public static UriComponentsBuilder fromHttpRequest(HttpServletRequest request, ForwardedHeaderInitialHeaders initialOptions) {
         URI uri = HttpServletRequestUtil.getURI(request);
-        HttpHeaders headers = HttpServletRequestUtil.getHeaders(request);
+        HttpHeaders headers = HttpServletRequestUtil.getHeaders(request, initialOptions);
         return fromUri(uri).adaptFromForwardedHeaders(headers);
+    }
+
+    /**
+     * Create a new {@code UriComponents} object from the URI associated with
+     * the given HttpRequest while also overlaying with values from the headers
+     * "Forwarded" (<a href="http://tools.ietf.org/html/rfc7239">RFC 7239</a>),
+     * or "X-Forwarded-Host", "X-Forwarded-Port", and "X-Forwarded-Proto" if
+     * "Forwarded" is not found.
+     *
+     * @param request the source request
+     * @return the URI components of the URI
+     * @since 4.1.5
+     */
+    public static UriComponentsBuilder fromHttpRequest(HttpServletRequest request) {
+        return fromHttpRequest(request, null);
     }
 
 

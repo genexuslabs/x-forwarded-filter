@@ -90,20 +90,29 @@ public class ForwardedHeaderFilter extends OncePerRequestFilter {
     private XForwardedPrefixStrategy prefixStrategy;
     private HeaderProcessingStrategy headerProcessingStrategy;
 
+    private ForwardedHeaderInitialHeaders initialOptions;
+
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
         super.init(filterConfig);
         relativeRedirects = parseBoolean(filterConfig.getInitParameter(ENABLE_RELATIVE_REDIRECTS_INIT_PARAM));
+        
+
         headerProcessingStrategy = Optional.ofNullable(filterConfig.getInitParameter(HEADER_PROCESSING_STRATEGY))//
                 .map(HeaderProcessingStrategy::valueOf)//
                 .orElse(HeaderProcessingStrategy.EVAL_AND_REMOVE);
         prefixStrategy = Optional.ofNullable(filterConfig.getInitParameter(X_FORWARDED_PREFIX_STRATEGY))//
                 .map(XForwardedPrefixStrategy::valueOf)//
                 .orElse(XForwardedPrefixStrategy.REPLACE);
+
+        initialOptions = new ForwardedHeaderInitialHeaders(filterConfig);
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        if (initialOptions.hasDefaults()){
+            return false;
+        }
         Enumeration<String> names = request.getHeaderNames();
         while (names.hasMoreElements()) {
             String name = names.nextElement();
@@ -120,7 +129,7 @@ public class ForwardedHeaderFilter extends OncePerRequestFilter {
         HttpServletResponse response = originalResponse;
 
         if (headerProcessingStrategy.isEvaluateHeaders()) {
-            request = new ForwardedHeaderExtractingRequest(request, prefixStrategy);
+            request = new ForwardedHeaderExtractingRequest(request, initialOptions, prefixStrategy);
             if (relativeRedirects) {
                 response = RelativeRedirectResponseWrapper.wrapIfNecessary(response, WebUtilsConstants.SEE_OTHER);
             } else {

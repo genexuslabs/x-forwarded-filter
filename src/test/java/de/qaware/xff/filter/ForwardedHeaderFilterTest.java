@@ -31,6 +31,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Map;
 
 import static de.qaware.xff.filter.ForwardedHeaderFilter.*;
@@ -57,8 +58,12 @@ public class ForwardedHeaderFilterTest {
     @Before
     @SuppressWarnings("serial")
     public void setup() throws ServletException {
+        this.setupWithParams(null);
+    }
+
+    private void setupWithParams(Map<String, String> params) throws ServletException {
         this.filter = new ForwardedHeaderFilter();
-        initFilter(UNIT_TEST_FORWARDED_FILTER, null);
+        initFilter(UNIT_TEST_FORWARDED_FILTER, params);
         this.request = new MockHttpServletRequest();
         this.request.setScheme("http");
         this.request.setServerName("localhost");
@@ -75,6 +80,23 @@ public class ForwardedHeaderFilterTest {
         }
         filter.init(config);
         return filter;
+    }
+	
+
+    @Test
+    public void contextPathDefault() throws Exception {
+        String contextPath = "/my-default-context-path";
+        String host = "new-host";
+        String port = "5656";
+        Map<String, String> params = new HashMap<String, String>();
+        params.put("X-Forwarded-Prefix", contextPath);
+        params.put("X-Forwarded-Port", port);
+        params.put("X-Forwarded-Host", host);
+        this.setupWithParams(params);
+        assertFalse(filter.shouldNotFilter(this.request));
+        HttpServletRequest actual = filterAndGetWrappedRequest();
+        assertEquals(contextPath, actual.getContextPath());
+        assertEquals(String.format("http://%s:%s%s/", host, port, contextPath), actual.getRequestURL().toString());
     }
 
     @Test
